@@ -14,7 +14,9 @@ MIDL2025 Submission on using Hamming distances in Self-Attention for Long Range 
 
 ## Motivation
 While weight quantisation for improved storage and inference of deep transformer models is commonplace, much resources are wasted to compute QK^T with floating point precision (Nvidias Transformer Engine / Hopper is specifically build to enable FP8 in this step). By enabling a binary computation in both forward and backward step theoretical speed-ups and efficiency gains of 16x are possible with little to no sacrifice in performance. This is particularly important for long-range transformers (e.g. in 3D medical imaging) with token lenghts of a thousand and more. The following chart demonstrates the reduction of multiply-accumulate operations (MACs) with batch-size=1, N=2’048, D=384 and 6 heads. Combining a 4x reduction of the value tensor with the proposed Hamming Attention leads to a substantial complexity reduction, where now the MLP (with 4x channel expansion) dominates.
-![midl2025_concept_mac](https://github.com/user-attachments/assets/302cb3f6-ad3a-42f1-b8b3-15d7804dfb95 | width=100))
+
+<img alt="midl2025_concept_mac" src="https://github.com/user-attachments/assets/302cb3f6-ad3a-42f1-b8b3-15d7804dfb95" width="400">
+
 
 ## Method
 We consider the following setting where the input is linearly mapped to keys and queries (with trainable weight matrices) followed by a (softer) hyperbolic tangent activation to yield $\hat{q}$ and $\hat{k}$. (The values are mapped to 4x less channels to further reduce complexity.) Next the sign function is applied to obtain binary-valued (only -1 or +1) $Q^{(b)}$ and $K^{(b)}$. We concatenate $\hat{q}$ and $Q^{(b)}$ before feeding it into $\theta_Q$ and $\theta_K$ small MLPs with groups=#heads that predicts one scalar weight per head/token to produce $q_w$ and $k_w$. Note that we assume ``D=384``, ``H=6`` and the dimensions of the weights will be ``B*H x N x 1`` whereas $Q^{(b)}$ is currently ``B*H x N x 64``.   
